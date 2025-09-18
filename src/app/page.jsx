@@ -8,7 +8,6 @@ import CasesTable from "./components/CasesTable";
 export default function MainPage() {
   const [showForm, setShowForm] = useState(false);
   const [editing, setEditing] = useState(null);
-  const [selectedIds, setSelectedIds] = useState(new Set());
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
   const [analysisResult, setAnalysisResult] = useState([]);
@@ -23,28 +22,30 @@ export default function MainPage() {
   const [posterName, setPosterName] = useState("");
   const [hasEditedText, setHasEditedText] = useState(false);
   const [selectedResult, setSelectedResult] = useState(null); // currently selected saved result
-  const [page, setPage] = useState(1);
+  const [currentPage, setCurrentPage] = useState(1);
+
+  const [cases, setCases] = useState([]);
+  const [selectedIds, setSelectedIds] = useState(new Set());
+  const pageSize = 10; // 10 cases per page
   const [totalPages, setTotalPages] = useState(1);
-  const [cases, setCases] = useState([]); // not undefined
 
-  useEffect(() => {
-    fetch("/api/cases")
-      .then((res) => res.json())
-      .then((data) => setCases(Array.isArray(data) ? data : []))
-      .catch((err) => console.error(err));
-  }, []);
-
-  const loadCases = async (p = 1) => {
-    const res = await fetch(`/api/cases?page=${p}&limit=10`);
-    const data = await res.json();
-    setCases(data.cases || []);
-    setPage(data.page);
-    setTotalPages(data.totalPages);
+  const loadCases = async (page = 1) => {
+    try {
+      const res = await fetch(`/api/cases?page=${page}&limit=${pageSize}`);
+      const data = await res.json();
+      setCases(data.cases || []);
+      setCurrentPage(data.page || page);
+      setTotalPages(data.totalPages || 1);
+      setSelectedIds(new Set()); // reset selection when page changes
+    } catch (err) {
+      console.error("Failed to load cases:", err);
+      setCases([]);
+    }
   };
 
   useEffect(() => {
-    loadCases(page);
-  }, [page]);
+    loadCases(currentPage);
+  }, [currentPage]);
 
   const toggleSelect = (id) => {
     const newSet = new Set(selectedIds);
@@ -54,21 +55,8 @@ export default function MainPage() {
   };
 
   const toggleSelectAll = (checked) => {
-    if (checked) {
-      setSelectedIds(new Set(cases.map((c) => c.id)));
-    } else {
-      setSelectedIds(new Set());
-    }
-  };
-
-  const loadData = async () => {
-    fetch("/api/cases")
-      .then((res) => res.json())
-      .then(setCases)
-      .catch(() => setCases([]));
-    const res = await fetch("/api/cases");
-    const data = await res.json();
-    setCases(data);
+    if (checked) setSelectedIds(new Set(cases.map((c) => c.id)));
+    else setSelectedIds(new Set());
   };
 
   const deleteSelectedCases = () => {
@@ -415,16 +403,24 @@ export default function MainPage() {
             </div>
           </div>
         </div>
-        <CasesTable
-          cases={cases}
-          selectedIds={selectedIds}
-          toggleSelect={toggleSelect}
-        />
-
+        <div>
+          {cases.length > 0 ? (
+            <CasesTable
+              cases={cases} // paginated cases
+              currentPage={currentPage} // current page number
+              pageSize={pageSize} // used for numbering rows
+              selectedIds={selectedIds}
+              toggleSelect={toggleSelect}
+              toggleSelectAll={toggleSelectAll}
+            />
+          ) : (
+            <div>Loading...</div>
+          )}
+        </div>
         <Pagination
-          page={page}
+          page={currentPage}
           totalPages={totalPages}
-          onPageChange={(p) => setPage(p)}
+          onPageChange={setCurrentPage}
         />
       </section>
 

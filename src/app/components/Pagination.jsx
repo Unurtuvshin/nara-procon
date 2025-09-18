@@ -1,3 +1,4 @@
+"use client";
 import { useState } from "react";
 
 export default function Pagination({ page, totalPages, onPageChange }) {
@@ -18,13 +19,13 @@ export default function Pagination({ page, totalPages, onPageChange }) {
       }
     }
 
-    let last = 0;
+    let l = 0;
     for (let i of range) {
-      if (last && i - last > 1) {
+      if (l && i - l > 1) {
         pages.push("...");
       }
       pages.push(i);
-      last = i;
+      l = i;
     }
 
     return pages;
@@ -39,7 +40,7 @@ export default function Pagination({ page, totalPages, onPageChange }) {
   };
 
   return (
-    <div className="flex items-center gap-2 mt-4">
+    <div className="flex items-center gap-2 mt-4 flex-wrap">
       <button
         disabled={page === 1}
         onClick={() => onPageChange(1)}
