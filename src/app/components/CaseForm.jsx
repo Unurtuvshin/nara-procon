@@ -6,7 +6,7 @@ export default function CaseForm({ onClose, onSuccess, defaultData = {} }) {
   const [formData, setFormData] = useState({
     id: null,
     name: "",
-    desc: "",
+    description: "",
     date: "",
     type: "",
   });
@@ -15,7 +15,7 @@ export default function CaseForm({ onClose, onSuccess, defaultData = {} }) {
     setFormData({
       id: defaultData?.id ?? null,
       name: defaultData?.name ?? "",
-      desc: defaultData?.desc ?? "", // ✅ fixed (was content)
+      description: defaultData?.description ?? "", // ✅ fixed (was content)
       date: defaultData?.date ?? "",
       type: defaultData?.type ?? "",
     });
@@ -66,10 +66,10 @@ export default function CaseForm({ onClose, onSuccess, defaultData = {} }) {
           className="w-full border p-2 mb-3"
         />
 
-        <label>要件詳細</label>
+        <label>要件概要</label>
         <textarea
-          name="desc"
-          value={formData.desc}
+          name="description"
+          value={formData.description}
           onChange={handleChange}
           required
           className="w-full border p-2 mb-3"

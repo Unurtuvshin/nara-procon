@@ -7,7 +7,7 @@ export async function GET(req) {
   const offset = (page - 1) * limit;
 
   const rows = db
-    .prepare("SELECT * FROM cases ORDER BY id LIMIT ? OFFSET ?")
+    .prepare("SELECT * FROM cases ORDER BY id DESC LIMIT ? OFFSET ?")
     .all(limit, offset);
   const total = db.prepare("SELECT COUNT(*) as count FROM cases").get().count;
   const totalPages = Math.ceil(total / limit);

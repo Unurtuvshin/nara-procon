@@ -4,6 +4,7 @@ import Pagination from "./components/Pagination";
 import AnalysisPie from "./components/AnalysisPie";
 import CaseForm from "./components/CaseForm";
 import CasesTable from "./components/CasesTable";
+import AnalysisResults from "./components/AnalysisResults";
 
 export default function MainPage() {
   const [showForm, setShowForm] = useState(false);
@@ -59,6 +60,32 @@ export default function MainPage() {
     else setSelectedIds(new Set());
   };
 
+  const addCase = async (newCase) => {
+    try {
+      const res = await fetch("/api/cases/add", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(newCase),
+      });
+
+      if (!res.ok) throw new Error("Failed to add case");
+
+      const data = await res.json();
+      alert("Case added successfully!");
+
+      // After adding, check total pages
+      const totalCasesRes = await fetch("/api/cases?limit=1"); // fetch total count
+      const totalCasesData = await totalCasesRes.json();
+      const totalPages = totalCasesData.totalPages || 1;
+
+      // Jump to last page where the new case would appear
+      loadCases(totalPages);
+      setCurrentPage(totalPages);
+    } catch (err) {
+      alert(err.message);
+    }
+  };
+
   const deleteSelectedCases = () => {
     if (selectedIds.size === 0) {
       alert("削除する案件を選択してください");
@@ -78,8 +105,8 @@ export default function MainPage() {
         return res.json();
       })
       .then(() => {
-        loadData();
-        setSelectedIds(new Set());
+        loadCases(currentPage); // <-- use loadCases with the current page
+        setSelectedIds(new Set()); // reset selected checkboxes
       })
       .catch((err) => {
         alert(err.message);
@@ -131,6 +158,23 @@ export default function MainPage() {
     }
   };
 
+  const handleSelectPoster = async (posterId) => {
+    try {
+      const res = await fetch("/api/posters/output", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ posterId }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        // Force reload of output.png
+        setPosterImageUrl(`/data/poster-image/output.png?ts=${Date.now()}`);
+      }
+    } catch (err) {
+      console.error("Failed to set output poster:", err);
+    }
+  };
+
   const handleSaveResult = async () => {
     if (!resultName) {
       alert("結果の名前を入力してください");
@@ -163,6 +207,17 @@ export default function MainPage() {
       alert("保存中にエラーが発生しました");
     }
   };
+
+  useEffect(() => {
+    const handleMessage = (event) => {
+      if (event.data?.type === "caseAdded") {
+        loadCases(currentPage); // reload current page
+      }
+    };
+
+    window.addEventListener("message", handleMessage);
+    return () => window.removeEventListener("message", handleMessage);
+  }, [currentPage]);
 
   // In your main page component (page.jsx)
   useEffect(() => {
@@ -384,7 +439,8 @@ export default function MainPage() {
                       throw new Error("データのアップロードに失敗しました");
 
                     alert(`CSVからデータを追加しました (${json.inserted} 件)`);
-                    loadData();
+                    loadCases(1);
+                    setCurrentPage(1);
                   } catch (err) {
                     console.error("CSV upload error:", err);
                     alert("CSV処理中にエラーが発生しました");
@@ -527,6 +583,7 @@ export default function MainPage() {
           </div>
           <AnalysisPie data={analysisResult} />
         </div>
+        <AnalysisResults />
       </section>
 
       {/* ポスター作成・編集 Section */}
@@ -555,27 +612,11 @@ export default function MainPage() {
               backgroundColor: posterImageUrl ? "transparent" : "#888888",
             }}
           >
-            {posterImageUrl ? (
-              <img
-                src={posterImageUrl}
-                alt="ポスター"
-                style={{
-                  maxWidth: "100%",
-                  maxHeight: "100%",
-                  objectFit: "contain",
-                  display: "block",
-                }}
-                onError={(e) => {
-                  e.target.onerror = null;
-                  e.target.style.display = "none";
-                  e.target.parentNode.style.backgroundColor = "#888888";
-                }}
-              />
-            ) : (
-              <div style={{ color: "#ccc", fontSize: "18px" }}>
-                画像がありません
-              </div>
-            )}
+            <img
+              src={posterImageUrl || "/data/poster-image/output.png"}
+              alt="Poster Preview"
+              style={{ width: "600px", height: "auto" }}
+            />
           </div>
 
           {/* Text area: fixed 400x100 with centered editable text and placeholder */}
