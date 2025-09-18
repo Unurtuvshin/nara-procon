@@ -1,10 +1,11 @@
 "use client";
 import { useEffect, useState, useRef } from "react";
+import Pagination from "./components/Pagination";
 import AnalysisPie from "./components/AnalysisPie";
 import CaseForm from "./components/CaseForm";
+import CasesTable from "./components/CasesTable";
 
 export default function MainPage() {
-  const [cases, setCases] = useState([]);
   const [showForm, setShowForm] = useState(false);
   const [editing, setEditing] = useState(null);
   const [selectedIds, setSelectedIds] = useState(new Set());
@@ -21,8 +22,44 @@ export default function MainPage() {
   const [savedResultId, setSavedResultId] = useState(null);
   const [posterName, setPosterName] = useState("");
   const [hasEditedText, setHasEditedText] = useState(false);
-  const posterTextRef = useRef(null);
   const [selectedResult, setSelectedResult] = useState(null); // currently selected saved result
+  const [page, setPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [cases, setCases] = useState([]); // not undefined
+
+  useEffect(() => {
+    fetch("/api/cases")
+      .then((res) => res.json())
+      .then((data) => setCases(Array.isArray(data) ? data : []))
+      .catch((err) => console.error(err));
+  }, []);
+
+  const loadCases = async (p = 1) => {
+    const res = await fetch(`/api/cases?page=${p}&limit=10`);
+    const data = await res.json();
+    setCases(data.cases || []);
+    setPage(data.page);
+    setTotalPages(data.totalPages);
+  };
+
+  useEffect(() => {
+    loadCases(page);
+  }, [page]);
+
+  const toggleSelect = (id) => {
+    const newSet = new Set(selectedIds);
+    if (newSet.has(id)) newSet.delete(id);
+    else newSet.add(id);
+    setSelectedIds(newSet);
+  };
+
+  const toggleSelectAll = (checked) => {
+    if (checked) {
+      setSelectedIds(new Set(cases.map((c) => c.id)));
+    } else {
+      setSelectedIds(new Set());
+    }
+  };
 
   const loadData = async () => {
     fetch("/api/cases")
@@ -32,26 +69,6 @@ export default function MainPage() {
     const res = await fetch("/api/cases");
     const data = await res.json();
     setCases(data);
-  };
-
-  useEffect(() => {
-    loadData();
-  }, []);
-
-  const toggleSelect = (id) => {
-    setSelectedIds((prev) => {
-      const newSet = new Set(prev);
-      newSet.has(id) ? newSet.delete(id) : newSet.add(id);
-      return newSet;
-    });
-  };
-
-  const toggleSelectAll = () => {
-    if (selectedIds.size === cases.length) {
-      setSelectedIds(new Set());
-    } else {
-      setSelectedIds(new Set(cases.map((c) => c.id)));
-    }
   };
 
   const deleteSelectedCases = () => {
@@ -159,13 +176,6 @@ export default function MainPage() {
     }
   };
 
-  const openSavedResults = () => {
-    fetch("/api/results/list")
-      .then((res) => res.json())
-      .then(setSavedResults)
-      .catch(() => alert("以前の分析結果の取得に失敗しました"));
-    setShowSavedResults(true);
-  };
   // In your main page component (page.jsx)
   useEffect(() => {
     const handleMessage = (event) => {
@@ -369,7 +379,7 @@ export default function MainPage() {
 
                     // Remove rows where all fields are empty
                     const filteredData = mappedData.filter(
-                      (r) => r.name || r.content || r.date || r.type
+                      (r) => r.name || r.description || r.date || r.type
                     );
 
                     // Send parsed data to API
@@ -405,48 +415,17 @@ export default function MainPage() {
             </div>
           </div>
         </div>
-        <div className="overflow-hidden">
-          <table className="border border-gray-500 border-collapse w-full text-base">
-            <thead className="bg-gray-100">
-              <tr>
-                <th className="border border-gray-500 p-3 text-center">
-                  <input
-                    type="checkbox"
-                    checked={
-                      selectedIds.size === cases.length && cases.length > 0
-                    }
-                    onChange={toggleSelectAll}
-                  />
-                </th>
-                <th className="border border-gray-500 p-3">#</th>
-                <th className="border border-gray-500 p-3">件名</th>
-                <th className="border border-gray-500 p-3">相談要件</th>
-                <th className="border border-gray-500 p-3">年月日</th>
-                <th className="border border-gray-500 p-3">購入形態</th>
-              </tr>
-            </thead>
-            <tbody>
-              {cases.map((c, index) => (
-                <tr key={c.id} className="hover:bg-gray-50">
-                  <td className="border border-gray-500 p-3 text-center">
-                    <input
-                      type="checkbox"
-                      checked={selectedIds.has(c.id)}
-                      onChange={() => toggleSelect(c.id)}
-                    />
-                  </td>
-                  <td className="border border-gray-500 p-3 text-center">
-                    {index + 1}
-                  </td>
-                  <td className="border border-gray-500 p-3">{c.name}</td>
-                  <td className="border border-gray-500 p-3">{c.content}</td>
-                  <td className="border border-gray-500 p-3">{c.date}</td>
-                  <td className="border border-gray-500 p-3">{c.type}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+        <CasesTable
+          cases={cases}
+          selectedIds={selectedIds}
+          toggleSelect={toggleSelect}
+        />
+
+        <Pagination
+          page={page}
+          totalPages={totalPages}
+          onPageChange={(p) => setPage(p)}
+        />
       </section>
 
       {/* 分析 Section */}
