@@ -114,47 +114,31 @@ export default function MainPage() {
   };
 
   const handleStartAnalysis = async () => {
-    if (!startDate || !endDate) {
-      alert("開始日と終了日を選択してください。");
-      return;
-    }
-    if (startDate > endDate) {
-      alert("開始日は終了日より前にしてください。");
-      return;
-    }
-
-    // Filter cases in date range
-    const filteredCases = cases.filter(
-      (c) => c.date >= startDate && c.date <= endDate
-    );
-    if (filteredCases.length === 0) {
-      alert("該当するデータがありません。");
-      return;
-    }
-
     try {
-      const res = await fetch("/api/analyze", {
+      const res = await fetch("/api/bunseki", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           startDate,
           endDate,
-          cases: filteredCases,
+          page: 1,
+          limit: 100, // or whatever you want
         }),
       });
 
       if (!res.ok) {
         const errText = await res.text();
-        throw new Error(`分析APIエラー: ${errText}`);
+        throw new Error(`Analysis failed: ${errText}`);
       }
 
-      // Expect JSON: [{ fieldName, totalOccurrences, percentage, words: [w1, w2, w3] }, ...]
-      const resultData = await res.json();
-      setAnalysisResult(resultData);
+      const data = await res.json();
+      console.log("Analysis result:", data);
+
       alert("分析が完了しました");
+      setAnalysisResult(data); // optional
     } catch (err) {
       console.error("分析エラー:", err);
-      alert("分析中にエラーが発生しました。");
+      alert("分析中にエラーが発生しました");
     }
   };
 
